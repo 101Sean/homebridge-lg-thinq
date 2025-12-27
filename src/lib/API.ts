@@ -96,7 +96,10 @@ export class API {
         ? this.monitorHeaders
         : this.defaultHeaders;
 
-    const serviceUri = uri.startsWith('service/') ? `v1/${uri}` : uri;
+    let serviceUri = uri;
+    if (uri.startsWith('service/') && !uri.startsWith('v1/')) {
+      serviceUri = `v1/${uri}`;
+    }
     const url = this.resolveUrl(gateway.thinq2_url, serviceUri);
 
     this.logger.debug(`[실제 주소 확인]: ${url}`);

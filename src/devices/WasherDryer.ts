@@ -4,6 +4,7 @@ import { CharacteristicValue, Logger, PlatformAccessory, Service } from 'homebri
 import { Device } from '../lib/Device.js';
 import { PlatformType } from '../lib/constants.js';
 import { DeviceModel } from '../lib/DeviceModel.js';
+import axios from 'axios';
 
 export const NOT_RUNNING_STATUS = ['COOLDOWN', 'POWEROFF', 'POWERFAIL', 'INITIAL', 'PAUSE', 'AUDIBLE_DIAGNOSIS', 'FIRMWARE',
   'COURSE_DOWNLOAD', 'ERROR', 'END'];
@@ -147,22 +148,59 @@ export default class WasherDryer extends BaseDevice {
   // Sean's Custom
   public async sendCommand(mode: string) {
     const device = this.accessory.context.device as Device;
+    const api = (this.platform.ThinQ as any).api;
+    const session = api.session; // 기존 세션 정보 활용
+
+    // 1. 한국 서버 전용 URL 조립
+    const url = `https://kic-service.lgthinq.com:46030/v1/service/devices/${device.data.deviceId}/control-sync`;
+
+    // 2. 9006 에러 방지를 위한 헤더 직접 조립
+    const headers = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'x-api-key': 'n7892ca0-db9e-43f1-9669-e595088915b2', // LG 기본 API 키
+      'x-client-id': session?.clientId || api.client_id, // 로그인 당시 ID와 일치시켜 9006 방지
+      'x-emp-token': session?.accessToken,
+      'x-user-no': api.userNumber,
+      'x-service-code': 'SVC202',
+      'x-country-code': 'KR',
+      'x-language-code': 'ko-KR',
+      'x-thinq-app-os': 'ANDROID',
+      'x-thinq-app-ver': '4.1.4100',
+      'user-agent': 'okhttp/4.9.1',
+      'x-message-id': Math.random().toString(36).substring(2, 12),
+    };
+
+    // 3. 페이로드 조립 (ThinQ2 control-sync 방식 고정)
+    let payload: any;
     const isDryer = [202, 222].includes(device.data.deviceType);
     const operationKey = isDryer ? 'dryerOperationMode' : 'washerOperationMode';
 
-    try {
-      if (mode === 'POWER_OFF') {
-        await this.platform.ThinQ.deviceControl(device, { 'powerOff': 'ON' }, 'PowerOff', 'powerCtrl', 'control-sync');
-      } else {
-        const values = { [operationKey]: mode };
-        if (mode === 'START' && (this.Status.data?.state === 'INITIAL' || !this.Status.data?.course)) {
-          values['course'] = 'COTTONNORMAL';
-        }
-        await this.platform.ThinQ.deviceControl(device, values, 'Operation', 'basicCtrl', 'control-sync');
+    if (mode === 'POWER_OFF') {
+      payload = {
+        ctrlKey: 'powerCtrl',
+        command: 'PowerOff',
+        dataSet: { powerOff: 'ON' }
+      };
+    } else {
+      const values = { [operationKey]: mode };
+      if (mode === 'START' && (this.Status.data?.state === 'INITIAL' || !this.Status.data?.course)) {
+        values['course'] = 'COTTONNORMAL';
       }
-      this.platform.log.info(`${device.name} → ${mode} 전송 시도 완료`);
-    } catch (err) {
-      this.platform.log.error(`명령 전송 실패: ${err}`);
+      payload = {
+        ctrlKey: 'basicCtrl',
+        command: 'Operation',
+        dataSet: values
+      };
+    }
+
+    try {
+      this.platform.log.info(`[LG-Direct] ${device.name} → ${mode} 전송 시도`);
+      // 공용 ThinQ.ts를 거치지 않고 axios로 직접 쏩니다.
+      const res = await axios.post(url, payload, { headers });
+      this.platform.log.info(`[LG-Direct] 결과: ${res.data?.resultCode === '0000' ? '성공' : res.data?.resultCode}`);
+    } catch (err: any) {
+      this.platform.log.error(`[LG-Direct] 전송 실패: ${err.response?.data?.resultCode || err.message}`);
     }
   }
 
@@ -187,11 +225,10 @@ export default class WasherDryer extends BaseDevice {
 
     const isRunning = this.Status.isRunning;
     this.serviceWasherDryer?.updateCharacteristic(Characteristic.Active, isRunning ? 1 : 0);
-
     this.serviceWasherDryer?.updateCharacteristic(Characteristic.InUse, isRunning ? 1 : 0);
 
-    const remain = this.Status.remainDuration;
-    this.serviceWasherDryer?.updateCharacteristic(Characteristic.RemainingDuration, remain);
+    const remainSeconds = this.Status.remainDuration;
+    this.serviceWasherDryer?.updateCharacteristic(Characteristic.RemainingDuration, remainSeconds);
   }
 
   public update(snapshot: any) {

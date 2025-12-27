@@ -254,12 +254,27 @@ export class API {
       device_id: string,
       values: Record<string, any>,
       command: string,
-      ctrlKey = 'basicCtrl',
-      ctrlPath = 'control',
+      ctrlKey = 'basicCtrl'
   ) {
-    const data = { ctrlKey, command, ...values };
+    const payload = {
+      ctrlKey: ctrlKey,
+      command: command,
+      ...values,
+      data: values,
+    };
 
-    return await this.postRequest(`v1/service/devices/${device_id}/${ctrlPath}`, data);
+    const paths = [`service/devices/${device_id}/control-sync`, `service/devices/${device_id}/control` ];
+
+    for (const path of paths) {
+      this.logger.debug(`[HASS 제어 시도] 경로: ${path}, 데이터: ${JSON.stringify(payload)}`);
+      const response = await this.postRequest(path, payload);
+
+      if (response && response.resultCode !== undefined) {
+        return response;
+      }
+    }
+
+    return { resultCode: '9999', result: 'All paths failed' };
   }
 
   /**

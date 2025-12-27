@@ -255,7 +255,9 @@ export class API {
       payload: any,
       ctrlPath: string = 'control'
   ) {
-    const targetUri = `v1/service/devices/${device_id}/${ctrlPath}`;
+    const targetUri = `service/devices/${device_id}/${ctrlPath}`;
+
+    this.logger.debug(`[최종 경로 확인] ${targetUri}`);
 
     return await this.postRequest(targetUri, payload);
   }

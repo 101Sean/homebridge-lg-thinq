@@ -256,19 +256,9 @@ export class API {
       ctrlKey = 'basicCtrl',
       ctrlPath = 'control',
   ) {
-    if (typeof device_id !== 'string' || !device_id.trim()) {
-      throw new Error('Invalid device_id: must be a non-empty string.');
-    }
+    const data = { ctrlKey, command, ...values };
 
-    if (typeof command !== 'string') {
-      throw new Error('Invalid command: must be a string.');
-    }
-
-    return await this.postRequest('service/devices/' + device_id + '/' + ctrlPath, {
-      ctrlKey,
-      'command': command,
-      ...values,
-    });
+    return await this.postRequest(`service/devices/${device_id}/${ctrlPath}`, data);
   }
 
   /**

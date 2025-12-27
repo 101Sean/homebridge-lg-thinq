@@ -149,27 +149,20 @@ export default class WasherDryer extends BaseDevice {
     const device = this.accessory.context.device as Device;
     const isDryer = [202, 222].includes(device.data.deviceType);
     const operationKey = isDryer ? 'dryerOperationMode' : 'washerOperationMode';
-    const courseKey = isDryer ? 'courseDryer24inchBase' : 'course';
-
-    const payload = { [operationKey]: mode };
-
-    if (mode === 'START' && (this.Status.data?.state === 'INITIAL' || !this.Status.data?.course)) {
-      payload[courseKey] = 'COTTONNORMAL';
-      this.platform.log.info(`${device.name} → 초기 상태 감지: 표준 코스로 시작합니다.`);
-    }
 
     try {
-      await this.platform.ThinQ.deviceControl(device, payload, 'Operation', 'basicCtrl', 'control');
-      this.platform.log.info(`${device.name} → ${mode} 전송 성공`);
-    } catch (err: any) {
       if (mode === 'POWER_OFF') {
-        try {
-          await this.platform.ThinQ.deviceControl(device, { 'powerOff': 'ON' }, 'PowerOff', 'powerCtrl', 'control');
-          this.platform.log.info(`${device.name} → 우회 전원 종료 성공`);
-        } catch (inner) {
-          this.platform.log.error(`${device.name} → 모든 종료 명령 거절됨`);
+        await this.platform.ThinQ.deviceControl(device, { 'powerOff': 'ON' }, 'PowerOff', 'powerCtrl', 'control');
+      } else {
+        const payload = { [operationKey]: mode };
+        if (mode === 'START' && (this.Status.data?.state === 'INITIAL' || !this.Status.data?.course)) {
+          payload['course'] = 'COTTONNORMAL';
         }
+        await this.platform.ThinQ.deviceControl(device, payload, 'Operation', 'basicCtrl', 'control');
       }
+      this.platform.log.info(`${device.name} → ${mode} 전송 시도 완료`);
+    } catch (err) {
+      this.platform.log.error(`명령 전송 중 예외 발생: ${err}`);
     }
   }
 

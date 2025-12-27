@@ -174,29 +174,31 @@ export class ThinQ {
   public async deviceControl(
       device: string | Device,
       values: Record<string, any>,
-      command: 'Set' | 'Operation' | 'PowerOff' | string = 'Set',
+      command: string = 'Operation',
       ctrlKey = 'basicCtrl',
       ctrlPath = 'control'
   ) {
     const id = device instanceof Device ? device.id : device;
 
-    let finalCtrlKey = ctrlKey;
-    if (command === 'PowerOff' || values.powerOff === 'ON' || values.washerOperationMode === 'POWER_OFF' || values.dryerOperationMode === 'POWER_OFF') {
-      finalCtrlKey = 'powerCtrl';
-    }
+    const isPowerOff = command === 'PowerOff' || values.powerOff === 'ON' || values.washerOperationMode === 'POWER_OFF';
+    const finalCommand = isPowerOff ? 'PowerOff' : command;
+    const finalCtrlKey = isPowerOff ? 'powerCtrl' : ctrlKey;
 
-    if (command === 'Set' && !values.washerOperationMode && !values.dryerOperationMode) {
-      finalCtrlKey = 'settingCtrl';
-    }
+    const payload = {
+      ctrlKey: finalCtrlKey,
+      command: finalCommand,
+      ...values,
+    };
 
-    const response = await this.api.sendCommandToDevice(id, values, command, finalCtrlKey, ctrlPath);
+    const response = await this.api.sendCommandToDevice(id, values, finalCommand, finalCtrlKey, ctrlPath);
 
-    if (response && response.resultCode === '0000') {
-      this.logger.debug(`ThinQ Device Received the Command: ${command} (${finalCtrlKey})`);
+    const resultCode = response?.resultCode || (response?.lgedmRoot?.returnCode) || 'Unknown';
+
+    if (resultCode === '0000') {
+      this.logger.debug(`[성공] 커맨드: ${finalCommand}, 키: ${finalCtrlKey}`);
       return true;
     } else {
-      const code = response?.resultCode || 'Unknown';
-      this.logger.debug(`ThinQ Device Did Not Received the Command. ResultCode: ${code}`);
+      this.logger.error(`[실패] 결과코드: ${resultCode}, 보낸데이터: ${JSON.stringify(payload)}`);
       return false;
     }
   }

@@ -131,7 +131,7 @@ export default class WasherDryer extends BaseDevice {
         const device = this.accessory.context.device as Device;
 
         if (!this.Status.isRunning && !this.Status.isPaused) {
-          this.platform.log.warn(`${device.name}: 현재 세탁기가 작동 중이 아니므로 일시정지/재개 명령을 무시합니다.`);
+          this.platform.log.warn(`${device.name}: 현재 기기가 작동 중이 아니므로 일시정지/재개 명령을 무시합니다.`);
           setTimeout(() => this.updateAccessoryCharacteristic(device), 1000);
           return;
         }
@@ -152,6 +152,29 @@ export default class WasherDryer extends BaseDevice {
 
         this.updateAccessoryCharacteristic(device);
       });
+
+    // Sean's Custom (off)
+    const powerOffService = this.accessory.getService('전원 끄기') ||
+        this.accessory.addService(this.platform.Service.Switch, '전원 끄기', 'power-off');
+
+    powerOffService.getCharacteristic(this.platform.Characteristic.On)
+        .onGet(() => false) // 항상 Off 상태로 표시 (눌러도 다시 꺼짐 - Stateless 느낌)
+        .onSet(async (value: CharacteristicValue) => {
+          if (value) {
+            const device = this.accessory.context.device as Device;
+            const isDryer = [202, 222].includes(device.data.deviceType);
+            const operationKey = isDryer ? 'dryerOperationMode' : 'washerOperationMode';
+
+            try {
+              await this.platform.ThinQ.deviceControl(device, { [operationKey]: 'POWER_OFF' }, 'Operation');
+              this.platform.log.info(`${device.name} → 전원 끄기 명령 전송`);
+            } catch (err: any) {
+              this.platform.log.error(`${device.name} 전원 끄기 실패: ${err.message}`);
+            }
+
+            setTimeout(() => powerOffService.updateCharacteristic(this.platform.Characteristic.On, false), 1000);
+          }
+        });
   }
 
   public get Status() {
@@ -169,42 +192,38 @@ export default class WasherDryer extends BaseDevice {
   // Sean's Custom
   async setActive(value: CharacteristicValue) {
     const device = this.accessory.context.device as Device;
-    const mode = value === this.platform.Characteristic.Active.ACTIVE ? 'START' : 'POWER_OFF';
+    const isActive = value === this.platform.Characteristic.Active.ACTIVE;
+
+    const mode = isActive ? 'START' : 'STOP';
 
     const isDryer = [202, 222].includes(device.data.deviceType);
     const operationKey = isDryer ? 'dryerOperationMode' : 'washerOperationMode';
-    const values: Record<string, any> = {[operationKey]: mode};
+    const values = { [operationKey]: mode };
 
     try {
-      await this.platform.ThinQ.deviceControl(device, values, 'Operation');
-      this.platform.log.info(`${device.name} → ${mode} 명령 성공`);
+      const success = await this.platform.ThinQ.deviceControl(device, values, 'Operation');
+      if (success) {
+        this.platform.log.info(`${device.name} → ${mode}`);
+      }
     } catch (err: any) {
-      this.platform.log.error(`${device.name} 제어 실패: ${err.message || err}`);
+      this.platform.log.error(`${device.name} 제어 실패: ${err.message}`);
     }
+
     this.updateAccessoryCharacteristic(device);
   }
 
+  // Sean
   public updateAccessoryCharacteristic(device: Device) {
     super.updateAccessoryCharacteristic(device);
+    const { Characteristic } = this.platform;
 
-    const {
-      Characteristic,
-    } = this.platform;
-    this.serviceWasherDryer?.updateCharacteristic(Characteristic.Active, this.Status.isPowerOn ? 1 : 0);
-    this.serviceWasherDryer?.updateCharacteristic(Characteristic.InUse, this.Status.isRunning ? 1 : 0);
-    const prevRemainDuration = this.serviceWasherDryer?.getCharacteristic(Characteristic.RemainingDuration)?.value;
-    if (this.Status.remainDuration !== prevRemainDuration) {
-      this.serviceWasherDryer?.updateCharacteristic(Characteristic.RemainingDuration, this.Status.remainDuration);
-    }
+    const isRunning = this.Status.isRunning;
+    this.serviceWasherDryer?.updateCharacteristic(Characteristic.Active, isRunning ? 1 : 0);
 
-    this.serviceWasherDryer?.updateCharacteristic(Characteristic.StatusFault,
-      this.Status.isError ? Characteristic.StatusFault.GENERAL_FAULT : Characteristic.StatusFault.NO_FAULT);
+    this.serviceWasherDryer?.updateCharacteristic(Characteristic.InUse, isRunning ? 1 : 0);
 
-    if (this.config.washer_door_lock && this.serviceDoorLock) {
-      this.serviceDoorLock.updateCharacteristic(Characteristic.LockCurrentState,
-        this.Status.isDoorLocked ? Characteristic.LockCurrentState.SECURED : Characteristic.LockCurrentState.UNSECURED);
-      this.serviceDoorLock.updateCharacteristic(Characteristic.LockTargetState, this.Status.isDoorLocked ? 1 : 0);
-    }
+    const remain = this.Status.remainDuration;
+    this.serviceWasherDryer?.updateCharacteristic(Characteristic.RemainingDuration, remain);
   }
 
   public update(snapshot: any) {

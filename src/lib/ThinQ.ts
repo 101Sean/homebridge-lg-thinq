@@ -188,10 +188,9 @@ export class ThinQ {
       ctrlKey: finalCtrlKey,
       command: finalCommand,
       dataSet: values,
-      ...values,
     };
 
-    const response = await this.api.sendCommandToDevice(id, payload, finalCommand, finalCtrlKey, ctrlPath);
+    const response = await this.api.sendCommandToDevice(id, payload, ctrlPath);
 
     const resultCode = response?.resultCode || (response?.lgedmRoot?.returnCode) || 'Unknown';
 

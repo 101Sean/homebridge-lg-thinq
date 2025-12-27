@@ -250,12 +250,11 @@ export class API {
   }
 
   // Sean (세탁/건조를 위해 변경)
-  public async sendCommandToDevice(
-      device_id: string,
-      payload: Record<string, any>,
-      ctrlPath: string = 'control-sync'
-  ) {
+  public async sendCommandToDevice(device_id: string, payload: any, ctrlPath: string) {
     const targetUri = `v1/service/devices/${device_id}/${ctrlPath}`;
+
+    this.logger.debug(`[통신] 주소: ${targetUri}`);
+    this.logger.debug(`[통신] 데이터: ${JSON.stringify(payload)}`);
 
     return await this.postRequest(targetUri, payload);
   }

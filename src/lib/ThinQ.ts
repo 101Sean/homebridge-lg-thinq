@@ -171,18 +171,22 @@ export class ThinQ {
   }
 
   // Sean Custom
-  public async deviceControl(id: string, values: Record<string, any>, command: string, ctrlKey = 'basicCtrl') {
-    const isPowerOff = command === 'PowerOff' || values.powerOff === 'ON';
-    const finalCommand = isPowerOff ? 'PowerOff' : command;
-    const finalCtrlKey = isPowerOff ? 'powerCtrl' : ctrlKey;
+  public async deviceControl(
+      device: any,
+      values: Record<string, any>,
+      command: string,
+      ctrlKey: string,
+      ctrlPath: string
+  ) {
+    const id = device.deviceId || device.id;
 
     const payload = {
-      ctrlKey: finalCtrlKey,
-      command: finalCommand,
+      ctrlKey: ctrlKey,
+      command: command,
       dataSet: values,
     };
 
-    return await this.api.sendCommandToDevice(id, payload, 'control-sync');
+    return await this.api.sendCommandToDevice(id, payload, ctrlPath);
   }
 
   public async registerMQTTListener(callback: (data: any) => void) {

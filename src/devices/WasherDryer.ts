@@ -152,17 +152,17 @@ export default class WasherDryer extends BaseDevice {
 
     try {
       if (mode === 'POWER_OFF') {
-        await this.platform.ThinQ.deviceControl(device, { 'powerOff': 'ON' }, 'PowerOff', 'powerCtrl', 'control');
+        await this.platform.ThinQ.deviceControl(device, { 'powerOff': 'ON' }, 'PowerOff', 'powerCtrl', 'control-sync');
       } else {
-        const payload = { [operationKey]: mode };
+        const values = { [operationKey]: mode };
         if (mode === 'START' && (this.Status.data?.state === 'INITIAL' || !this.Status.data?.course)) {
-          payload['course'] = 'COTTONNORMAL';
+          values['course'] = 'COTTONNORMAL';
         }
-        await this.platform.ThinQ.deviceControl(device, payload, 'Operation', 'basicCtrl', 'control');
+        await this.platform.ThinQ.deviceControl(device, values, 'Operation', 'basicCtrl', 'control-sync');
       }
       this.platform.log.info(`${device.name} → ${mode} 전송 시도 완료`);
     } catch (err) {
-      this.platform.log.error(`명령 전송 중 예외 발생: ${err}`);
+      this.platform.log.error(`명령 전송 실패: ${err}`);
     }
   }
 

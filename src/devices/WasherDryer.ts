@@ -126,17 +126,7 @@ export default class WasherDryer extends BaseDevice {
         .onGet(() => false)
         .onSet(async (value: CharacteristicValue) => {
           if (value) {
-            const device = this.accessory.context.device as Device;
-            const isDryer = [202, 222].includes(device.data.deviceType);
-            const operationKey = isDryer ? 'dryerOperationMode' : 'washerOperationMode';
-
-            try {
-              await this.platform.ThinQ.deviceControl(device, { [operationKey]: 'POWER_OFF' }, 'Operation');
-              this.platform.log.info(`${device.name} → 전원 끄기 명령 전송`);
-            } catch (err: any) {
-              this.platform.log.error(`${device.name} 전원 끄기 실패: ${err.message}`);
-            }
-
+            await this.sendCommand('POWER_OFF');
             setTimeout(() => powerOffService.updateCharacteristic(this.platform.Characteristic.On, false), 1000);
           }
         });
@@ -161,12 +151,17 @@ export default class WasherDryer extends BaseDevice {
     const operationKey = isDryer ? 'dryerOperationMode' : 'washerOperationMode';
 
     try {
-      await this.platform.ThinQ.deviceControl(device, { [operationKey]: mode }, 'Operation');
+      await this.platform.ThinQ.deviceControl(device, { [operationKey]: mode }, 'Operation', 'basicCtrl');
       this.platform.log.info(`${device.name} → ${mode} 전송 성공`);
     } catch (err: any) {
-      this.platform.log.error(`${device.name} 명령 실패: ${err.message}`);
+      if (err.message?.includes('9006') || err.message?.includes('400')) {
+        this.platform.log.error(`${device.name}: 기기 상태가 ${mode} 명령을 받을 수 없습니다. (원격제어 OFF 또는 문 열림)`);
+      } else {
+        this.platform.log.error(`${device.name} 명령 오류: ${err.message}`);
+      }
     }
-    this.updateAccessoryCharacteristic(device);
+
+    setTimeout(() => this.updateAccessoryCharacteristic(device), 2000);
   }
 
   // Faucet 제어부

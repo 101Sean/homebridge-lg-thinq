@@ -129,6 +129,13 @@ export default class WasherDryer extends BaseDevice {
       })
       .onSet(async (value: CharacteristicValue) => {
         const device = this.accessory.context.device as Device;
+
+        if (!this.Status.isRunning && !this.Status.isPaused) {
+          this.platform.log.warn(`${device.name}: 현재 세탁기가 작동 중이 아니므로 일시정지/재개 명령을 무시합니다.`);
+          setTimeout(() => this.updateAccessoryCharacteristic(device), 1000);
+          return;
+        }
+
         const mode = value ? 'STOP' : 'START';
 
         const isDryer = [202, 222].includes(device.deviceType);
@@ -162,35 +169,18 @@ export default class WasherDryer extends BaseDevice {
   // Sean's Custom
   async setActive(value: CharacteristicValue) {
     const device = this.accessory.context.device as Device;
-
-    let mode = value === this.platform.Characteristic.Active.ACTIVE ? 'START' : 'POWER_OFF';
-    if (value === this.platform.Characteristic.Active.ACTIVE) {
-      mode = 'START';  // 시작
-    } else {
-      mode = 'POWER_OFF';  // 완전 전원 off
-    }
+    const mode = value === this.platform.Characteristic.Active.ACTIVE ? 'START' : 'POWER_OFF';
 
     const isDryer = [202, 222].includes(device.deviceType);
     const operationKey = isDryer ? 'dryerOperationMode' : 'washerOperationMode';
-
-    const values: Record<string, any> = {
-      [operationKey]: mode,
-    };
+    const values: Record<string, any> = {[operationKey]: mode};
 
     try {
-      const success = await this.platform.ThinQ.deviceControl(device, values, 'Operation');
-
-      if (success) {
-        this.platform.log.info(`${device.name} → ${mode} 명령 성공`);
-      } else {
-        this.platform.log.warn(`${device.name} → 명령 수신 실패 (서버 응답 이상)`);
-      }
+      await this.platform.ThinQ.deviceControl(device, values, 'Operation');
+      this.platform.log.info(`${device.name} → ${mode} 명령 성공`);
     } catch (err: any) {
       this.platform.log.error(`${device.name} 제어 실패: ${err.message || err}`);
-      this.updateAccessoryCharacteristic(device);
-      return;
     }
-
     this.updateAccessoryCharacteristic(device);
   }
 

@@ -257,8 +257,14 @@ export class API {
       ctrlKey = 'basicCtrl',
       ctrlPath = 'control-sync',
   ) {
-    const data = { ctrlKey, command, ...values };
-    const targetUri = `service/devices/${device_id}/${ctrlPath}`;
+    const data = {
+      ctrlKey,
+      command,
+      ...values,
+      dataSet: values
+    };
+    const targetUri = `v1/service/devices/${device_id}/${ctrlPath}`;
+    this.logger.debug(`[제어 요청]: ${targetUri} / 데이터: ${JSON.stringify(data)}`);
 
     return await this.postRequest(targetUri, data);
   }
@@ -373,8 +379,8 @@ export class API {
     }
 
     if (!this.client_id) {
-      const hash = crypto.createHash('sha256');
-      this.client_id = hash.update(this.userNumber + (new Date()).getTime()).digest('hex');
+      this.client_id = constants.API_CLIENT_ID ||
+          crypto.createHash('sha256').update(this.userNumber + (new Date()).getTime()).digest('hex');
     }
   }
 

@@ -263,7 +263,7 @@ export class API {
       ...values,
       dataSet: values
     };
-    const targetUri = `v1/service/devices/${device_id}/${ctrlPath}`;
+    const targetUri = `service/devices/${device_id}/${ctrlPath}`;
     this.logger.debug(`[제어 요청]: ${targetUri} / 데이터: ${JSON.stringify(data)}`);
 
     return await this.postRequest(targetUri, data);

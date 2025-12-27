@@ -89,23 +89,17 @@ export class API {
     return url.href;
   }
 
-  /**
-   * Sends an HTTP request to the ThinQ API.
-   *
-   * @param method - The HTTP method ('get' or 'post').
-   * @param uri - The URI to send the request to.
-   * @param data - Optional data to include in the request.
-   * @param retry - Whether to retry the request in case of token expiration.
-   * @returns A promise resolving to the response data.
-   */
+  // Sean Custom
   protected async request(method: Method | undefined, uri: string, data?: any, retry = false): Promise<any> {
     const gateway = await this.gateway();
-    // Determine the appropriate headers based on the URI
     const requestHeaders = (gateway.thinq1_url && uri.startsWith(gateway.thinq1_url))
-      ? this.monitorHeaders
-      : this.defaultHeaders;
+        ? this.monitorHeaders
+        : this.defaultHeaders;
 
-    const url = this.resolveUrl(gateway.thinq2_url, uri);
+    const serviceUri = uri.startsWith('service/') ? `v1/${uri}` : uri;
+    const url = this.resolveUrl(gateway.thinq2_url, serviceUri);
+
+    this.logger.debug(`[실제 주소 확인]: ${url}`);
 
     return await this.httpClient.request({
       method,
@@ -192,9 +186,10 @@ export class API {
 
     headers['x-client-id'] = this.client_id || constants.API_CLIENT_ID;
 
+    // 버전 업
     return {
       'x-api-key': constants.API_KEY,
-      'x-thinq-app-ver': '3.6.1200',
+      'x-thinq-app-ver': '4.1.4100',
       'x-thinq-app-type': 'NUTS',
       'x-thinq-app-level': 'PRD',
       'x-thinq-app-os': 'ANDROID',
@@ -204,11 +199,11 @@ export class API {
       'x-language-code': this.language,
       'x-service-phase': 'OP',
       'x-origin': 'app-native',
-      'x-model-name': 'samsung/SM-G930L',
-      'x-os-version': 'AOS/7.1.2',
-      'x-app-version': 'LG ThinQ/3.6.12110',
+      'x-model-name': 'samsung/SM-N986N',
+      'x-os-version': 'AOS/12',
+      'x-app-version': 'LG ThinQ/4.1.41110',
       'x-message-id': random_string(22),
-      'user-agent': 'okhttp/3.14.9',
+      'user-agent': 'okhttp/4.9.1',
       ...headers,
     };
   }

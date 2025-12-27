@@ -172,7 +172,8 @@ export class ThinQ {
 
   public async deviceControl(
     device: string | Device, values: Record<string, any>,
-    command: 'Set' | 'Operation' = 'Set', ctrlKey = 'basicCtrl', ctrlPath = 'control-sync') {
+    command: 'Set' | 'Operation' | 'PowerOff' | string = 'Set',
+    ctrlKey = 'basicCtrl', ctrlPath = 'control-sync') {
     const id = device instanceof Device ? device.id : device;
     const response = await this.api.sendCommandToDevice(id, values, command, ctrlKey, ctrlPath);
     if (response.resultCode === '0000') {

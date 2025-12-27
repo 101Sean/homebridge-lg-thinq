@@ -153,7 +153,7 @@ export default class WasherDryer extends BaseDevice {
     const courseKey = isDryer ? 'courseDryer24inchBase' : 'course';
     const payload = { [operationKey]: mode };
 
-    if (mode === 'START' && this.Status.data?.state === 'INITIAL') {
+    if (mode === 'START' && (this.Status.data?.state === 'INITIAL' || !this.Status.data?.course)) {
       payload[courseKey] = 'COTTONNORMAL';
     }
 
@@ -161,10 +161,22 @@ export default class WasherDryer extends BaseDevice {
       await this.platform.ThinQ.deviceControl(device, payload, 'Operation', 'basicCtrl');
       this.platform.log.info(`${device.name} → ${mode} 전송 성공`);
     } catch (err: any) {
-      if (err.message?.includes('9006') || err.message?.includes('400')) {
-        this.platform.log.error(`${device.name}: 명령 거부(9006). 본체에서 '원격 제어' 버튼을 눌러 활성화했는지 확인하세요.`);
-      } else {
-        this.platform.log.error(`${device.name} 명령 오류: ${err.message}`);
+      if (mode === 'POWER_OFF' && (err.message?.includes('9006') || err.message?.includes('400'))) {
+        try {
+          this.platform.log.info(`${device.name} → 9006 감지, powerCtrl 우회 시도...`);
+
+          await this.platform.ThinQ.deviceControl(
+              device,
+              { 'powerOff': 'ON' },
+              'PowerOff',
+              'powerCtrl',
+              'basicCtrl'
+          );
+
+          this.platform.log.info(`${device.name} → 우회 전원 종료 성공`);
+        } catch (innerErr) {
+          this.platform.log.error(`${device.name} → 우회 시도도 실패했습니다.`);
+        }
       }
     }
 
@@ -174,8 +186,15 @@ export default class WasherDryer extends BaseDevice {
   // Faucet 제어부
   async setActive(value: CharacteristicValue) {
     const isActive = value === this.platform.Characteristic.Active.ACTIVE;
-    const mode = isActive ? 'START' : 'STOP';
-    await this.sendCommand(mode);
+    const currentState = this.Status.data?.state;
+
+    if (isActive) {
+      if (currentState === 'RUNNING') return;
+      await this.sendCommand('START');
+    } else {
+      if (['PAUSE', 'POWEROFF', 'INITIAL'].includes(currentState)) return;
+      await this.sendCommand('STOP');
+    }
   }
 
   // Sean

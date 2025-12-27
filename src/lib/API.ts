@@ -262,14 +262,14 @@ export class API {
   public async sendCommandToDevice(
     device_id: string,
     values: Record<string, any>,
-    command: 'Set' | 'Operation',
+    command: 'Set' | 'Operation' | string,
     ctrlKey = 'basicCtrl',
     ctrlPath = 'control-sync',
   ) {
     if (typeof device_id !== 'string' || !device_id.trim()) {
       throw new Error('Invalid device_id: must be a non-empty string.');
     }
-    if (typeof command !== 'string' || !['Set', 'Operation'].includes(command)) {
+    if (typeof command !== 'string' || !['Set', 'Operation', 'PowerOff'].includes(command)) {
       throw new Error('Invalid command: must be "Set" or "Operation".');
     }
     return await this.postRequest('service/devices/' + device_id + '/' + ctrlPath, {

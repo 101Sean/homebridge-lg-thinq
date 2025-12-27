@@ -171,16 +171,8 @@ export class ThinQ {
   }
 
   // Sean Custom
-  public async deviceControl(
-      device: string | Device,
-      values: Record<string, any>,
-      command: string = 'Operation',
-      ctrlKey = 'basicCtrl',
-      ctrlPath = 'control-sync'
-  ) {
-    const id = device instanceof Device ? device.id : device;
-
-    const isPowerOff = command === 'PowerOff' || values.powerOff === 'ON' || values.washerOperationMode === 'POWER_OFF';
+  public async deviceControl(id: string, values: Record<string, any>, command: string, ctrlKey = 'basicCtrl') {
+    const isPowerOff = command === 'PowerOff' || values.powerOff === 'ON';
     const finalCommand = isPowerOff ? 'PowerOff' : command;
     const finalCtrlKey = isPowerOff ? 'powerCtrl' : ctrlKey;
 
@@ -190,17 +182,7 @@ export class ThinQ {
       dataSet: values,
     };
 
-    const response = await this.api.sendCommandToDevice(id, payload, ctrlPath);
-
-    const resultCode = response?.resultCode || (response?.lgedmRoot?.returnCode) || 'Unknown';
-
-    if (resultCode === '0000') {
-      this.logger.debug(`[성공] 커맨드: ${finalCommand}, 키: ${finalCtrlKey}`);
-      return true;
-    } else {
-      this.logger.error(`[실패] 결과코드: ${resultCode}, 보낸데이터: ${JSON.stringify(payload)}`);
-      return false;
-    }
+    return await this.api.sendCommandToDevice(id, payload, 'control-sync');
   }
 
   public async registerMQTTListener(callback: (data: any) => void) {

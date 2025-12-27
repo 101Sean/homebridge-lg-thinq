@@ -200,7 +200,7 @@ export class API {
       'x-thinq-app-level': 'PRD',
       'x-thinq-app-os': 'ANDROID',
       'x-thinq-app-logintype': 'LGE',
-      'x-service-code': 'SVC710',
+      'x-service-code': 'SVC202',
       'x-country-code': this.country,
       'x-language-code': this.language,
       'x-service-phase': 'OP',
@@ -253,11 +253,9 @@ export class API {
   public async sendCommandToDevice(
       device_id: string,
       payload: Record<string, any>,
-      ctrlPath = 'control-sync',
+      ctrlPath: string = 'control-sync'
   ) {
-    const targetUri = `service/devices/${device_id}/${ctrlPath}`;
-
-    this.logger.debug(`[최종 제어 시도] URI: ${targetUri}, Payload: ${JSON.stringify(payload)}`);
+    const targetUri = `v1/service/devices/${device_id}/${ctrlPath}`;
 
     return await this.postRequest(targetUri, payload);
   }

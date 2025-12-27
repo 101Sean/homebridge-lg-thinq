@@ -260,11 +260,12 @@ export class API {
     const data = {
       ctrlKey,
       command,
-      ...values,
       dataSet: values
     };
+
     const targetUri = `service/devices/${device_id}/${ctrlPath}`;
-    this.logger.debug(`[제어 요청]: ${targetUri} / 데이터: ${JSON.stringify(data)}`);
+
+    this.logger.debug(`[최종 제어 시도] URI: ${targetUri}, Payload: ${JSON.stringify(data)}`);
 
     return await this.postRequest(targetUri, data);
   }

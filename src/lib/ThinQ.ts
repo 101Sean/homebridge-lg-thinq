@@ -174,19 +174,28 @@ export class ThinQ {
   public async deviceControl(
       device: any,
       values: Record<string, any>,
-      command: string,
-      ctrlKey: string,
-      ctrlPath: string
+      command?: string,
+      ctrlKey?: string,
+      ctrlPath?: string
   ) {
     const id = device.deviceId || device.id;
 
-    const payload = {
-      ctrlKey: ctrlKey,
-      command: command,
-      dataSet: values,
-    };
+    let payload: any;
+    if (command && ctrlPath === 'control-sync') {
+      payload = {
+        ctrlKey: ctrlKey || 'basicCtrl',
+        command: command,
+        dataSet: values,
+      };
+    } else {
+      payload = {
+        ...values,
+        command: command || 'Operation',
+        ctrlKey: ctrlKey || 'basicCtrl',
+      };
+    }
 
-    return await this.api.sendCommandToDevice(id, payload, ctrlPath);
+    return await this.api.sendCommandToDevice(id, payload, ctrlPath || 'control');
   }
 
   public async registerMQTTListener(callback: (data: any) => void) {

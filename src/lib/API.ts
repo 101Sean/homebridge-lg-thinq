@@ -200,7 +200,7 @@ export class API {
       'x-thinq-app-level': 'PRD',
       'x-thinq-app-os': 'ANDROID',
       'x-thinq-app-logintype': 'LGE',
-      'x-service-code': 'SVC202',
+      'x-service-code': 'SVC710',
       'x-country-code': this.country,
       'x-language-code': this.language,
       'x-service-phase': 'OP',
@@ -372,8 +372,7 @@ export class API {
     }
 
     if (!this.client_id) {
-      this.client_id = constants.API_CLIENT_ID ||
-          crypto.createHash('sha256').update(this.userNumber + (new Date()).getTime()).digest('hex');
+      this.client_id = constants.API_CLIENT_ID;
     }
   }
 

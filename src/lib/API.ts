@@ -89,20 +89,23 @@ export class API {
     return url.href;
   }
 
-  // Sean Custom
+  /**
+   * Sends an HTTP request to the ThinQ API.
+   *
+   * @param method - The HTTP method ('get' or 'post').
+   * @param uri - The URI to send the request to.
+   * @param data - Optional data to include in the request.
+   * @param retry - Whether to retry the request in case of token expiration.
+   * @returns A promise resolving to the response data.
+   */
   protected async request(method: Method | undefined, uri: string, data?: any, retry = false): Promise<any> {
     const gateway = await this.gateway();
+    // Determine the appropriate headers based on the URI
     const requestHeaders = (gateway.thinq1_url && uri.startsWith(gateway.thinq1_url))
         ? this.monitorHeaders
         : this.defaultHeaders;
 
-    let serviceUri = uri;
-    if (uri.startsWith('service/') && !uri.startsWith('v1/')) {
-      serviceUri = `v1/${uri}`;
-    }
-    const url = this.resolveUrl(gateway.thinq2_url, serviceUri);
-
-    this.logger.debug(`[실제 주소 확인]: ${url}`);
+    const url = this.resolveUrl(gateway.thinq2_url, uri);
 
     return await this.httpClient.request({
       method,
@@ -256,7 +259,7 @@ export class API {
   ) {
     const data = { ctrlKey, command, ...values };
 
-    return await this.postRequest(`service/devices/${device_id}/${ctrlPath}`, data);
+    return await this.postRequest(`v1/service/devices/${device_id}/${ctrlPath}`, data);
   }
 
   /**

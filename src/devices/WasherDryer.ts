@@ -138,7 +138,7 @@ export default class WasherDryer extends BaseDevice {
 
         const mode = value ? 'STOP' : 'START';
 
-        const isDryer = [202, 222].includes(device.deviceType);
+        const isDryer = [202, 222].includes(device.data.deviceType);
         const operationKey = isDryer ? 'dryerOperationMode' : 'washerOperationMode';
 
         const values: Record<string, any> = {[operationKey]: mode};
@@ -171,7 +171,7 @@ export default class WasherDryer extends BaseDevice {
     const device = this.accessory.context.device as Device;
     const mode = value === this.platform.Characteristic.Active.ACTIVE ? 'START' : 'POWER_OFF';
 
-    const isDryer = [202, 222].includes(device.deviceType);
+    const isDryer = [202, 222].includes(device.data.deviceType);
     const operationKey = isDryer ? 'dryerOperationMode' : 'washerOperationMode';
     const values: Record<string, any> = {[operationKey]: mode};
 

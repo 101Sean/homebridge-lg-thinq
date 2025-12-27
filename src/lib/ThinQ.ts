@@ -176,7 +176,7 @@ export class ThinQ {
       values: Record<string, any>,
       command: string = 'Operation',
       ctrlKey = 'basicCtrl',
-      ctrlPath = 'control'
+      ctrlPath = 'control-sync'
   ) {
     const id = device instanceof Device ? device.id : device;
 
@@ -188,6 +188,7 @@ export class ThinQ {
       ctrlKey: finalCtrlKey,
       command: finalCommand,
       ...values,
+      // dataSet: values,
     };
 
     const response = await this.api.sendCommandToDevice(id, values, finalCommand, finalCtrlKey, ctrlPath);

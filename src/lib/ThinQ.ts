@@ -171,30 +171,26 @@ export class ThinQ {
   }
 
   // Sean Custom
-  public async deviceControl(
-      device: any,
-      values: Record<string, any>,
-      command?: string,
-      ctrlKey?: string,
-      ctrlPath?: string
-  ) {
+  public async deviceControl(device: any, values: Record<string, any>, command?: string, ctrlKey?: string, ctrlPath?: string) {
     const id = device.deviceId || device.id;
 
-    let payload: any;
     if (command && ctrlPath === 'control-sync') {
-      payload = {
+      const payload = {
         ctrlKey: ctrlKey || 'basicCtrl',
         command: command,
-        dataSet: values,
+        dataSet: {
+          command: command,
+          ...values
+        },
       };
-    } else {
-      payload = {
-        ...values,
-        command: command || 'Operation',
-        ctrlKey: ctrlKey || 'basicCtrl',
-      };
+      return await this.api.sendCommandToDevice(id, payload, ctrlPath);
     }
 
+    const payload = {
+      ...values,
+      command: command || 'Operation',
+      ctrlKey: ctrlKey || 'basicCtrl',
+    };
     return await this.api.sendCommandToDevice(id, payload, ctrlPath || 'control');
   }
 

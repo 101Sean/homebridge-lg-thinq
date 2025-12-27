@@ -181,8 +181,25 @@ export class API {
       return result.join('');
     }
 
-    const headers: Record<string,string> = {};
-    if (this.session.accessToken) {
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'x-api-key': constants.API_KEY,
+      'x-thinq-app-ver': '4.1.4100',
+      'x-thinq-app-type': 'NUTS',
+      'x-thinq-app-level': 'PRD',
+      'x-thinq-app-os': 'ANDROID',
+      'x-thinq-app-logintype': 'LGE',
+      'x-service-code': 'SVC202',
+      'x-country-code': this.country || 'KR',
+      'x-language-code': this.language || 'ko-KR',
+      'x-service-phase': 'OP',
+      'x-origin': 'app-native',
+      'x-message-id': random_string(22),
+      'user-agent': 'okhttp/4.9.1',
+    };
+
+    if (this.session?.accessToken) {
       headers['x-emp-token'] = this.session.accessToken;
     }
 
@@ -192,26 +209,7 @@ export class API {
 
     headers['x-client-id'] = this.client_id || constants.API_CLIENT_ID;
 
-    // 버전 업
-    return {
-      'x-api-key': constants.API_KEY,
-      'x-thinq-app-ver': '4.1.4100',
-      'x-thinq-app-type': 'NUTS',
-      'x-thinq-app-level': 'PRD',
-      'x-thinq-app-os': 'ANDROID',
-      'x-thinq-app-logintype': 'LGE',
-      'x-service-code': 'SVC202',
-      'x-country-code': this.country,
-      'x-language-code': this.language,
-      'x-service-phase': 'OP',
-      'x-origin': 'app-native',
-      'x-model-name': 'samsung/SM-N986N',
-      'x-os-version': 'AOS/12',
-      'x-app-version': 'LG ThinQ/4.1.41110',
-      'x-message-id': random_string(22),
-      'user-agent': 'okhttp/4.9.1',
-      ...headers,
-    };
+    return headers;
   }
 
   public async getSingleDevice(device_id: string) {
@@ -250,14 +248,8 @@ export class API {
   }
 
   // Sean (세탁/건조를 위해 변경)
-  public async sendCommandToDevice(
-      device_id: string,
-      payload: any,
-      ctrlPath: string = 'control'
-  ) {
+  public async sendCommandToDevice(device_id: string, payload: any, ctrlPath: string = 'control') {
     const targetUri = `service/devices/${device_id}/${ctrlPath}`;
-
-    this.logger.debug(`[최종 경로 확인] ${targetUri}`);
 
     return await this.postRequest(targetUri, payload);
   }

@@ -118,47 +118,12 @@ export default class WasherDryer extends BaseDevice {
       accessory.removeService(this.serviceTubCleanMaintenance);
     }
 
-    // Sean's Custom (stop, start)
-    const pauseService = this.accessory.getService('일시정지') ||
-    this.accessory.addService(this.platform.Service.Switch, '일시정지', 'pause');
-
-    pauseService.getCharacteristic(this.platform.Characteristic.On)
-      .onGet(async () => {
-        const snapshot = this.accessory.context.device.snapshot?.washerDryer;
-        return snapshot?.state === 'PAUSE';
-      })
-      .onSet(async (value: CharacteristicValue) => {
-        const device = this.accessory.context.device as Device;
-
-        if (!this.Status.isRunning && !this.Status.isPaused) {
-          this.platform.log.warn(`${device.name}: 현재 기기가 작동 중이 아니므로 일시정지/재개 명령을 무시합니다.`);
-          setTimeout(() => this.updateAccessoryCharacteristic(device), 1000);
-          return;
-        }
-
-        const mode = value ? 'STOP' : 'START';
-
-        const isDryer = [202, 222].includes(device.data.deviceType);
-        const operationKey = isDryer ? 'dryerOperationMode' : 'washerOperationMode';
-
-        const values: Record<string, any> = {[operationKey]: mode};
-
-        try {
-          await this.platform.ThinQ.deviceControl(device, values, 'Operation');
-          this.platform.log.info(`${device.name} → ${mode} (일시정지/재개)`);
-        } catch (err: any) {
-          this.platform.log.error(`일시정지 제어 실패: ${err.message || err}`);
-        }
-
-        this.updateAccessoryCharacteristic(device);
-      });
-
     // Sean's Custom (off)
     const powerOffService = this.accessory.getService('전원 끄기') ||
         this.accessory.addService(this.platform.Service.Switch, '전원 끄기', 'power-off');
 
     powerOffService.getCharacteristic(this.platform.Characteristic.On)
-        .onGet(() => false) // 항상 Off 상태로 표시 (눌러도 다시 꺼짐 - Stateless 느낌)
+        .onGet(() => false)
         .onSet(async (value: CharacteristicValue) => {
           if (value) {
             const device = this.accessory.context.device as Device;
@@ -190,26 +155,25 @@ export default class WasherDryer extends BaseDevice {
   }
 
   // Sean's Custom
-  async setActive(value: CharacteristicValue) {
+  async sendCommand(mode: string) {
     const device = this.accessory.context.device as Device;
-    const isActive = value === this.platform.Characteristic.Active.ACTIVE;
-
-    const mode = isActive ? 'START' : 'STOP';
-
     const isDryer = [202, 222].includes(device.data.deviceType);
     const operationKey = isDryer ? 'dryerOperationMode' : 'washerOperationMode';
-    const values = { [operationKey]: mode };
 
     try {
-      const success = await this.platform.ThinQ.deviceControl(device, values, 'Operation');
-      if (success) {
-        this.platform.log.info(`${device.name} → ${mode}`);
-      }
+      await this.platform.ThinQ.deviceControl(device, { [operationKey]: mode }, 'Operation');
+      this.platform.log.info(`${device.name} → ${mode} 전송 성공`);
     } catch (err: any) {
-      this.platform.log.error(`${device.name} 제어 실패: ${err.message}`);
+      this.platform.log.error(`${device.name} 명령 실패: ${err.message}`);
     }
-
     this.updateAccessoryCharacteristic(device);
+  }
+
+  // Faucet 제어부
+  async setActive(value: CharacteristicValue) {
+    const isActive = value === this.platform.Characteristic.Active.ACTIVE;
+    const mode = isActive ? 'START' : 'STOP';
+    await this.sendCommand(mode);
   }
 
   // Sean

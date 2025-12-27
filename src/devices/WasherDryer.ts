@@ -145,46 +145,36 @@ export default class WasherDryer extends BaseDevice {
   }
 
   // Sean's Custom
-  async sendCommand(mode: string) {
+  public async sendCommand(mode: string) {
     const device = this.accessory.context.device as Device;
     const isDryer = [202, 222].includes(device.data.deviceType);
-
     const operationKey = isDryer ? 'dryerOperationMode' : 'washerOperationMode';
     const courseKey = isDryer ? 'courseDryer24inchBase' : 'course';
+
     const payload = { [operationKey]: mode };
 
     if (mode === 'START' && (this.Status.data?.state === 'INITIAL' || !this.Status.data?.course)) {
       payload[courseKey] = 'COTTONNORMAL';
+      this.platform.log.info(`${device.name} → 초기 상태 감지: 표준 코스로 시작합니다.`);
     }
 
     try {
-      await this.platform.ThinQ.deviceControl(device, payload, 'Operation', 'basicCtrl');
+      await this.platform.ThinQ.deviceControl(device, payload, 'Operation', 'basicCtrl', 'control');
       this.platform.log.info(`${device.name} → ${mode} 전송 성공`);
     } catch (err: any) {
-      if (mode === 'POWER_OFF' && (err.message?.includes('9006') || err.message?.includes('400'))) {
+      if (mode === 'POWER_OFF') {
         try {
-          this.platform.log.info(`${device.name} → 9006 감지, powerCtrl 우회 시도...`);
-
-          await this.platform.ThinQ.deviceControl(
-              device,
-              { 'powerOff': 'ON' },
-              'PowerOff',
-              'powerCtrl',
-              'basicCtrl'
-          );
-
+          await this.platform.ThinQ.deviceControl(device, { 'powerOff': 'ON' }, 'PowerOff', 'powerCtrl', 'control');
           this.platform.log.info(`${device.name} → 우회 전원 종료 성공`);
-        } catch (innerErr) {
-          this.platform.log.error(`${device.name} → 우회 시도도 실패했습니다.`);
+        } catch (inner) {
+          this.platform.log.error(`${device.name} → 모든 종료 명령 거절됨`);
         }
       }
     }
-
-    setTimeout(() => this.updateAccessoryCharacteristic(device), 2000);
   }
 
   // Faucet 제어부
-  async setActive(value: CharacteristicValue) {
+  public async setActive(value: CharacteristicValue) {
     const isActive = value === this.platform.Characteristic.Active.ACTIVE;
     const currentState = this.Status.data?.state;
 
@@ -269,10 +259,6 @@ export class WasherDryerStatus {
     return !['POWEROFF', 'POWERFAIL'].includes(this.data?.state);
   }
 
-  public get isRunning() {
-    return this.isPowerOn && !NOT_RUNNING_STATUS.includes(this.data?.state);
-  }
-
   public get isError() {
     return this.data?.state === 'ERROR';
   }
@@ -293,6 +279,10 @@ export class WasherDryerStatus {
   // Sean's Custom
   public get isPaused() {
     return this.data?.state === 'PAUSE';
+  }
+
+  public get isRunning() {
+    return this.isPowerOn && !NOT_RUNNING_STATUS.includes(this.data?.state);
   }
 
   public get remainDuration() {

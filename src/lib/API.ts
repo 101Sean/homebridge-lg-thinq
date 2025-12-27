@@ -248,30 +248,22 @@ export class API {
     return this._homes;
   }
 
-  /**
-   * Sends a command to a specific device.
-   *
-   * @param device_id - The ID of the device to send the command to.
-   * @param values - The command values to send.
-   * @param command - The type of command ('Set' or 'Operation').
-   * @param ctrlKey - The control key (default: 'basicCtrl').
-   * @param ctrlPath - The control path (default: 'control-sync').
-   * @returns A promise resolving to the response of the command.
-   * @throws Error if `device_id` is not a valid non-empty string.
-   */
+  // Sean (세탁/건조를 위해 변경)
   public async sendCommandToDevice(
-    device_id: string,
-    values: Record<string, any>,
-    command: 'Set' | 'Operation' | string,
-    ctrlKey = 'basicCtrl',
-    ctrlPath = 'control-sync',
+      device_id: string,
+      values: Record<string, any>,
+      command: string,
+      ctrlKey = 'basicCtrl',
+      ctrlPath = 'control',
   ) {
     if (typeof device_id !== 'string' || !device_id.trim()) {
       throw new Error('Invalid device_id: must be a non-empty string.');
     }
-    if (typeof command !== 'string' || !['Set', 'Operation', 'PowerOff'].includes(command)) {
-      throw new Error('Invalid command: must be "Set" or "Operation".');
+
+    if (typeof command !== 'string') {
+      throw new Error('Invalid command: must be a string.');
     }
+
     return await this.postRequest('service/devices/' + device_id + '/' + ctrlPath, {
       ctrlKey,
       'command': command,

@@ -170,17 +170,33 @@ export class ThinQ {
     });
   }
 
+  // Sean Custom
   public async deviceControl(
-    device: string | Device, values: Record<string, any>,
-    command: 'Set' | 'Operation' | 'PowerOff' | string = 'Set',
-    ctrlKey = 'basicCtrl', ctrlPath = 'control-sync') {
+      device: string | Device,
+      values: Record<string, any>,
+      command: 'Set' | 'Operation' | 'PowerOff' | string = 'Set',
+      ctrlKey = 'basicCtrl',
+      ctrlPath = 'control'
+  ) {
     const id = device instanceof Device ? device.id : device;
-    const response = await this.api.sendCommandToDevice(id, values, command, ctrlKey, ctrlPath);
-    if (response.resultCode === '0000') {
-      this.logger.debug('ThinQ Device Received the Command');
+
+    let finalCtrlKey = ctrlKey;
+    if (command === 'PowerOff' || values.powerOff === 'ON' || values.washerOperationMode === 'POWER_OFF' || values.dryerOperationMode === 'POWER_OFF') {
+      finalCtrlKey = 'powerCtrl';
+    }
+
+    if (command === 'Set' && !values.washerOperationMode && !values.dryerOperationMode) {
+      finalCtrlKey = 'settingCtrl';
+    }
+
+    const response = await this.api.sendCommandToDevice(id, values, command, finalCtrlKey, ctrlPath);
+
+    if (response && response.resultCode === '0000') {
+      this.logger.debug(`ThinQ Device Received the Command: ${command} (${finalCtrlKey})`);
       return true;
     } else {
-      this.logger.debug('ThinQ Device Did Not Received the Command');
+      const code = response?.resultCode || 'Unknown';
+      this.logger.debug(`ThinQ Device Did Not Received the Command. ResultCode: ${code}`);
       return false;
     }
   }

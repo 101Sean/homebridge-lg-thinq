@@ -148,14 +148,21 @@ export default class WasherDryer extends BaseDevice {
   async sendCommand(mode: string) {
     const device = this.accessory.context.device as Device;
     const isDryer = [202, 222].includes(device.data.deviceType);
+
     const operationKey = isDryer ? 'dryerOperationMode' : 'washerOperationMode';
+    const courseKey = isDryer ? 'courseDryer24inchBase' : 'course';
+    const payload = { [operationKey]: mode };
+
+    if (mode === 'START' && this.Status.data?.state === 'INITIAL') {
+      payload[courseKey] = 'COTTONNORMAL';
+    }
 
     try {
-      await this.platform.ThinQ.deviceControl(device, { [operationKey]: mode }, 'Operation', 'basicCtrl');
+      await this.platform.ThinQ.deviceControl(device, payload, 'Operation', 'basicCtrl');
       this.platform.log.info(`${device.name} → ${mode} 전송 성공`);
     } catch (err: any) {
       if (err.message?.includes('9006') || err.message?.includes('400')) {
-        this.platform.log.error(`${device.name}: 기기 상태가 ${mode} 명령을 받을 수 없습니다. (원격제어 OFF 또는 문 열림)`);
+        this.platform.log.error(`${device.name}: 명령 거부(9006). 본체에서 '원격 제어' 버튼을 눌러 활성화했는지 확인하세요.`);
       } else {
         this.platform.log.error(`${device.name} 명령 오류: ${err.message}`);
       }

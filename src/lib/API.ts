@@ -52,9 +52,9 @@ export class API {
   public httpClient = requestClient;
 
   constructor(
-    protected country: string = 'US',
-    protected language: string = 'en-US',
-    protected logger: Logger,
+      protected country: string = 'US',
+      protected language: string = 'en-US',
+      protected logger: Logger,
   ) {
   }
 
@@ -125,12 +125,12 @@ export class API {
         // Handle manual process errors (e.g., new terms agreement)
         this.logger.warn('Handling new term agreement... If you keep getting this message, ' + err.message);
         await this.auth.handleNewTerm(this.session.accessToken)
-          .then(() => {
-            this.logger.warn('LG new term agreement is accepted.');
-          })
-          .catch(err => {
-            this.logger.error(err);
-          });
+            .then(() => {
+              this.logger.warn('LG new term agreement is accepted.');
+            })
+            .catch(err => {
+              this.logger.error(err);
+            });
 
         if (!retry) {
           // Retry the request once
@@ -181,25 +181,8 @@ export class API {
       return result.join('');
     }
 
-    const headers: Record<string, string> = {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'x-api-key': constants.API_KEY,
-      'x-thinq-app-ver': '4.1.4100',
-      'x-thinq-app-type': 'NUTS',
-      'x-thinq-app-level': 'PRD',
-      'x-thinq-app-os': 'ANDROID',
-      'x-thinq-app-logintype': 'LGE',
-      'x-service-code': 'SVC202',
-      'x-country-code': this.country || 'KR',
-      'x-language-code': this.language || 'ko-KR',
-      'x-service-phase': 'OP',
-      'x-origin': 'app-native',
-      'x-message-id': random_string(22),
-      'user-agent': 'okhttp/4.9.1',
-    };
-
-    if (this.session?.accessToken) {
+    const headers: Record<string,string> = {};
+    if (this.session.accessToken) {
       headers['x-emp-token'] = this.session.accessToken;
     }
 
@@ -209,7 +192,25 @@ export class API {
 
     headers['x-client-id'] = this.client_id || constants.API_CLIENT_ID;
 
-    return headers;
+    return {
+      'x-api-key': constants.API_KEY,
+      'x-thinq-app-ver': '3.6.1200',
+      'x-thinq-app-type': 'NUTS',
+      'x-thinq-app-level': 'PRD',
+      'x-thinq-app-os': 'ANDROID',
+      'x-thinq-app-logintype': 'LGE',
+      'x-service-code': 'SVC202',
+      'x-country-code': this.country,
+      'x-language-code': this.language,
+      'x-service-phase': 'OP',
+      'x-origin': 'app-native',
+      'x-model-name': 'samsung/SM-G930L',
+      'x-os-version': 'AOS/7.1.2',
+      'x-app-version': 'LG ThinQ/3.6.12110',
+      'x-message-id': random_string(22),
+      'user-agent': 'okhttp/3.14.9',
+      ...headers,
+    };
   }
 
   public async getSingleDevice(device_id: string) {
@@ -247,11 +248,35 @@ export class API {
     return this._homes;
   }
 
-  // Sean (세탁/건조를 위해 변경)
-  public async sendCommandToDevice(device_id: string, payload: any, ctrlPath: string = 'control') {
-    const targetUri = `service/devices/${device_id}/${ctrlPath}`;
-
-    return await this.postRequest(targetUri, payload);
+  /**
+   * Sends a command to a specific device.
+   *
+   * @param device_id - The ID of the device to send the command to.
+   * @param values - The command values to send.
+   * @param command - The type of command ('Set' or 'Operation').
+   * @param ctrlKey - The control key (default: 'basicCtrl').
+   * @param ctrlPath - The control path (default: 'control-sync').
+   * @returns A promise resolving to the response of the command.
+   * @throws Error if `device_id` is not a valid non-empty string.
+   */
+  public async sendCommandToDevice(
+      device_id: string,
+      values: Record<string, any>,
+      command: 'Set' | 'Operation',
+      ctrlKey = 'basicCtrl',
+      ctrlPath = 'control-sync',
+  ) {
+    if (typeof device_id !== 'string' || !device_id.trim()) {
+      throw new Error('Invalid device_id: must be a non-empty string.');
+    }
+    if (typeof command !== 'string' || !['Set', 'Operation'].includes(command)) {
+      throw new Error('Invalid command: must be "Set" or "Operation".');
+    }
+    return await this.postRequest('service/devices/' + device_id + '/' + ctrlPath, {
+      ctrlKey,
+      'command': command,
+      ...values,
+    });
   }
 
   /**
@@ -297,22 +322,22 @@ export class API {
     }
 
     return await this.thinq1PostRequest('rti/rtiResult', { workList: [{ deviceId: device_id, workId: work_id }] })
-      .then(data => {
-        if (!('workList' in data) || !('returnCode' in data.workList)) {
-          return null;
-        }
+        .then(data => {
+          if (!('workList' in data) || !('returnCode' in data.workList)) {
+            return null;
+          }
 
-        const workList = data.workList;
-        if (workList.returnCode !== '0000') {
-          throw new MonitorError(data);
-        }
+          const workList = data.workList;
+          if (workList.returnCode !== '0000') {
+            throw new MonitorError(data);
+          }
 
-        if (!('returnData' in workList)) {
-          return null;
-        }
+          if (!('returnData' in workList)) {
+            return null;
+          }
 
-        return Buffer.from(workList.returnData, 'base64');
-      });
+          return Buffer.from(workList.returnData, 'base64');
+        });
   }
 
   public setRefreshToken(refreshToken: string) {
@@ -364,7 +389,8 @@ export class API {
     }
 
     if (!this.client_id) {
-      this.client_id = constants.API_CLIENT_ID;
+      const hash = crypto.createHash('sha256');
+      this.client_id = hash.update(this.userNumber + (new Date()).getTime()).digest('hex');
     }
   }
 

@@ -188,12 +188,11 @@ export default class WasherDryer extends BaseDevice {
 
       const modeKey = deviceType === '201' ? 'washerOperationMode' : 'dryerOperationMode';
       const values = {
-        operation: {
-          [modeKey]: opMode,
-        },
+        [modeKey]: opMode,
       };
 
-      this.logger.debug(`[${device.name}] 전송 데이터(문서 규격): ${JSON.stringify(values)}`);
+      this.logger.debug(`[${device.name}] 평면 구조 전송 시도: ${JSON.stringify(values)}`);
+
       return await this.platform.ThinQ.deviceControl(device.id, values, 'Operation', 'basicCtrl');
     }
   }

@@ -91,7 +91,7 @@ export default class WasherDryer extends BaseDevice {
       }
 
       this.serviceEventFinished.setCharacteristic(Characteristic.Name, 'Program Finished');
-       
+
       this.serviceEventFinished.updateCharacteristic(Characteristic.OccupancyDetected, Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED);
     } else if (this.serviceEventFinished) {
       accessory.removeService(this.serviceEventFinished);
@@ -107,7 +107,7 @@ export default class WasherDryer extends BaseDevice {
       }
 
       this.serviceTubCleanMaintenance.setCharacteristic(Characteristic.Name, 'Tub Clean Coach');
-       
+
       this.serviceTubCleanMaintenance.updateCharacteristic(Characteristic.OccupancyDetected, Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED);
 
       this.serviceTubCleanMaintenance.setCharacteristic(Characteristic.Name, 'Tub Clean Coach');
@@ -149,17 +149,18 @@ export default class WasherDryer extends BaseDevice {
   public async sendCommand(mode: string) {
     const device = this.accessory.context.device as Device;
     const api = (this.platform.ThinQ as any).api;
-    const session = api.session; // 기존 세션 정보 활용
+    const session = api.session;
 
-    // 1. 한국 서버 전용 URL 조립
+    const API_KEY = 'VGhpblEyLjAgU0VSVklDRQ==';
+    const API_CLIENT_ID = 'c713ea8e50f657534ff8b9d373dfebfc2ed70b88285c26b8ade49868c0b164d9';
+
     const url = `https://kic-service.lgthinq.com:46030/v1/service/devices/${device.data.deviceId}/control-sync`;
 
-    // 2. 9006 에러 방지를 위한 헤더 직접 조립
     const headers = {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-      'x-api-key': 'n7892ca0-db9e-43f1-9669-e595088915b2', // LG 기본 API 키
-      'x-client-id': session?.clientId || api.client_id, // 로그인 당시 ID와 일치시켜 9006 방지
+      'x-api-key': API_KEY,
+      'x-client-id': API_CLIENT_ID,
       'x-emp-token': session?.accessToken,
       'x-user-no': api.userNumber,
       'x-service-code': 'SVC202',
@@ -171,7 +172,6 @@ export default class WasherDryer extends BaseDevice {
       'x-message-id': Math.random().toString(36).substring(2, 12),
     };
 
-    // 3. 페이로드 조립 (ThinQ2 control-sync 방식 고정)
     let payload: any;
     const isDryer = [202, 222].includes(device.data.deviceType);
     const operationKey = isDryer ? 'dryerOperationMode' : 'washerOperationMode';
@@ -196,7 +196,6 @@ export default class WasherDryer extends BaseDevice {
 
     try {
       this.platform.log.info(`[LG-Direct] ${device.name} → ${mode} 전송 시도`);
-      // 공용 ThinQ.ts를 거치지 않고 axios로 직접 쏩니다.
       const res = await axios.post(url, payload, { headers });
       this.platform.log.info(`[LG-Direct] 결과: ${res.data?.resultCode === '0000' ? '성공' : res.data?.resultCode}`);
     } catch (err: any) {

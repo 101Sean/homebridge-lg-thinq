@@ -178,7 +178,12 @@ export default class WasherDryer extends BaseDevice {
     if (device.platform === PlatformType.ThinQ1) { // ThinQ 1세대
       return await this.platform.ThinQ.thinq1DeviceControl(device, 'Operation', command);
     } else { // ThinQ 2세대
-      return await this.platform.ThinQ.deviceControl(device.id, { value: command }, 'Operation', 'basicCtrl');
+      const values = {
+        payload: {
+          operation: command,
+        },
+      };
+      return await this.platform.ThinQ.deviceControl(device.id, values, 'Operation', 'basicCtrl');
     }
   }
 

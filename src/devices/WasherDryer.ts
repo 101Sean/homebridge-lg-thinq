@@ -29,7 +29,7 @@ export default class WasherDryer extends BaseDevice {
       Service: {
         OccupancySensor,
         ContactSensor,
-        StatelessProgrammableSwitch,
+        Switch,
         LockMechanism,
         Valve,
       },
@@ -51,14 +51,26 @@ export default class WasherDryer extends BaseDevice {
 
     // Power off
     const powerOffName = `${device.name} Power Off`;
-    this.servicePowerOff = accessory.getService(powerOffName) || accessory.getService(StatelessProgrammableSwitch);
+    this.servicePowerOff = accessory.getService(powerOffName) || accessory.getService(Switch);
     if (!this.servicePowerOff) {
-      this.servicePowerOff = accessory.addService(StatelessProgrammableSwitch, powerOffName, 'power-off-button');
+      this.servicePowerOff = accessory.addService(Switch, powerOffName, 'power-off-button');
     }
-    this.servicePowerOff.getCharacteristic(Characteristic.ProgrammableSwitchEvent)
-        .onSet(async () => {
-          this.logger.info(`[${device.name}] 전원 끄기 명령 전송`);
-          await this.sendCommand('Off');
+
+    this.servicePowerOff.getCharacteristic(this.platform.Characteristic.On)
+        .onSet(async (value: CharacteristicValue) => {
+          if (value === true) {
+            this.logger.info(`[${device.name}] 전원 끄기 명령 전송`);
+            try {
+              await this.sendCommand('Off');
+
+              setTimeout(() => {
+                this.servicePowerOff?.updateCharacteristic(this.platform.Characteristic.On, false);
+              }, 1000);
+            } catch (err) {
+              this.logger.error(`[${device.name}] 전원 끄기 실패:`, err);
+              this.servicePowerOff?.updateCharacteristic(this.platform.Characteristic.On, false);
+            }
+          }
         });
 
     // only thinq2 support door lock status

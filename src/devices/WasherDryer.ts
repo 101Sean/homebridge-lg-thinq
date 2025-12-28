@@ -179,20 +179,18 @@ export default class WasherDryer extends BaseDevice {
     if (device.platform === PlatformType.ThinQ1) {
       return await this.platform.ThinQ.thinq1DeviceControl(device, 'Operation', command);
     } else {
-      let opMode = 'START';
-      if (command === 'Off') {
-        opMode = 'POWER_OFF';
-      } else if (command === 'Pause') {
-        opMode = 'STOP';
-      }
-
+      const opMode = command === 'Off' ? 'POWER_OFF' : 'START';
       const modeKey = deviceType === '201' ? 'washerOperationMode' : 'dryerOperationMode';
+
       const values = {
-        [modeKey]: opMode,
+        payload: {
+          operation: {
+            [modeKey]: opMode,
+          },
+        },
       };
 
-      this.logger.debug(`[${device.name}] 평면 구조 전송 시도: ${JSON.stringify(values)}`);
-
+      this.logger.debug(`[${device.name}] 최신 표준 규격(payload 계층) 전송`);
       return await this.platform.ThinQ.deviceControl(device.id, values, 'Operation', 'basicCtrl');
     }
   }
